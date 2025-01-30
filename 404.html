@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>توجيه إلى التطبيق</title>
+    <style>
+        /* نفس الأنماط السابقة */
+        :root { /* ... */ }
+        body { /* ... */ }
+        .container { /* ... */ }
+        .loader { /* ... */ }
+        .message { /* ... */ }
+        button { /* ... */ }
+        @keyframes spin { /* ... */ }
+        @media (prefers-color-scheme: dark) { /* ... */ }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="loader"></div>
+        <div class="message" id="mobileMessage">
+            <h2>جاري التوجيه إلى التطبيق...</h2>
+            <p>إذا لم يتم التوجيه تلقائيًا، انقر الزر أدناه:</p>
+            <button onclick="redirectToStore()">فتح التطبيق</button>
+        </div>
+        <div class="message" id="desktopMessage">
+            <h2>⚠️ هذا الرابط مخصص للأجهزة المحمولة</h2>
+            <p>جاري تحويلك إلى متجر التطبيقات...</p>
+            <button onclick="redirectToStore()">الذهاب إلى المتجر الآن</button>
+        </div>
+    </div>
+
+    <script>
+        // التهيئة العامة
+        const config = {
+            androidStore: 'https://play.google.com/store/apps/details?id=com.your.app',
+            iosStore: 'https://apps.apple.com/app/idAPPLE_ID',
+            appDeepLink: 'your-app://community/',
+            fallbackRedirect: 'https://amraljohary.github.io/MOG/'
+        }
+
+        // دالة محسنة لاستخراج الـ ID من أي مسار
+        function extractId() {
+            try {
+                const path = window.location.pathname
+                // دعم جميع الأشكال: /MOG/community/id=123 أو /community/id=123 أو أي مسار آخر
+                const match = path.match(/(\/community\/id=|id=)([^\/?]+)/i)
+                return match ? decodeURIComponent(match[2]) : null
+            } catch (error) {
+                console.error('Error extracting ID:', error)
+                return null
+            }
+        }
+
+        // تحديد نظام التشغيل بدقة أعلى
+        function getOS() {
+            const ua = navigator.userAgent
+            if (/android/i.test(ua)) return 'android'
+            if (/iPad|iPhone|iPod/i.test(ua)) return 'ios'
+            if (/Macintosh/i.test(ua)) return 'mac'
+            if (/Windows/i.test(ua)) return 'windows'
+            return 'unknown'
+        }
+
+        // التوجيه الذكي مع التعامل مع الأخطاء
+        function redirectToStore() {
+            try {
+                const os = getOS()
+                switch(os) {
+                    case 'android':
+                    case 'windows':
+                        window.location.href = config.androidStore
+                        break
+                    case 'ios':
+                    case 'mac':
+                        window.location.href = config.iosStore
+                        break
+                    default:
+                        window.location.href = config.fallbackRedirect
+                }
+            } catch (error) {
+                console.error('Redirect failed:', error)
+                window.location.href = config.fallbackRedirect
+            }
+        }
+
+        // محاولة فتح التطبيق
+        function tryOpenApp(id) {
+            try {
+                const deeplink = id ? 
+                    `${config.appDeepLink}${encodeURIComponent(id)}` : 
+                    config.appDeepLink
+                
+                window.location.replace(deeplink)
+                return true
+            } catch (error) {
+                console.error('App open failed:', error)
+                return false
+            }
+        }
+
+        // التنفيذ الرئيسي
+        function init() {
+            try {
+                const id = extractId()
+                console.log('ID المستلم:', id)
+                
+                const isMobile = /Mobi|Android/i.test(navigator.userAgent)
+                const loader = document.querySelector('.loader')
+                const mobileMessage = document.getElementById('mobileMessage')
+                const desktopMessage = document.getElementById('desktopMessage')
+
+                if (isMobile) {
+                    const appOpened = tryOpenApp(id)
+                    if (!appOpened) {
+                        setTimeout(() => {
+                            loader.style.display = 'none'
+                            mobileMessage.style.display = 'block'
+                            redirectToStore()
+                        }, 800)
+                    }
+                } else {
+                    loader.style.display = 'none'
+                    desktopMessage.style.display = 'block'
+                    redirectToStore()
+                }
+            } catch (error) {
+                console.error('Initialization error:', error)
+                window.location.href = config.fallbackRedirect
+            }
+        }
+
+        // بدء التشغيل مع تأخير لضمان تحميل الصفحة
+        window.addEventListener('load', () => {
+            setTimeout(init, 300)
+        })
+    </script>
+</body>
+</html>
